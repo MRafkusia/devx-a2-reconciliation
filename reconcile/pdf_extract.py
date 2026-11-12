@@ -58,8 +58,8 @@ class SupplierLayout:
 
 PRIMA_KERTAS = SupplierLayout(
     name="prima-kertas",
-    detect=re.compile(r"Invoice\s*No|Faktur|Subtotal", re.I),
-    document_number=re.compile(r"Invoice\s*No\.?\s*[_\W]*([A-Z0-9][A-Z0-9/\-.]+)", re.I),
+    detect=re.compile(r"Invoice\s*No|CN\s*No|Credit\s*Note\s*No|Nota\s*Kredit|Faktur|Subtotal", re.I),
+    document_number=re.compile(r"(?:Invoice|\bCN|Credit\s*Note)\s*No\.?\s*[_\W]*([A-Z0-9][A-Z0-9/\-.]+)", re.I),
     date=re.compile(r"Tanggal\s*/\s*Date\s+(\d{1,2}[-/.]\d{1,2}[-/.]\d{4})", re.I),
     po=re.compile(r"No\.\s*PO\s+([A-Z0-9\-]+)", re.I),
     reference=re.compile(r"Referensi\s*/\s*Reference\s+([A-Z0-9/\-.]+)", re.I),
@@ -330,6 +330,9 @@ def extract_pdf(
         documents.append(current)
         current = None
 
+    def continues_current(parse: PageParse) -> bool:
+        return current is not None and current.total is None and normalise_key(parse.number) == current.key
+
     with pdfplumber.open(path) as pdf:
         for index, page in enumerate(pdf.pages, start=1):
             text = page.extract_text() or ""
@@ -354,7 +357,7 @@ def extract_pdf(
                     kind = "scan"
                     detail = "figures verified by R1-R4 arithmetic" if verified else "figures NOT verified"
                     pages.append(PageLog(index, kind, method, detail))
-                    if parse.header:
+                    if parse.header and not continues_current(parse):
                         finish()
                         current = _document_from_parse(parse, file_name)
                     elif current is None:
@@ -369,7 +372,7 @@ def extract_pdf(
                 continue
 
             kind = "text"
-            if parse.header:
+            if parse.header and not continues_current(parse):
                 finish()
                 current = _document_from_parse(parse, file_name)
             elif current is None:
@@ -383,7 +386,7 @@ def extract_pdf(
 
 
 def _has_document_markers(text: str) -> bool:
-    return bool(re.search(r"Invoice\s*No|Subtotal|TOTAL\s*\(", text, re.I))
+    return bool(re.search(r"Invoice\s*No|CN\s*No|Subtotal|TOTAL\s*\(", text, re.I))
 
 
 def _ordered(documents: List[Document]) -> List[Document]:

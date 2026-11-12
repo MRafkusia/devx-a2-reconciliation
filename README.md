@@ -39,7 +39,7 @@ The command line exits with a one-line error (exit code 2) when an input file is
 
 If Tesseract is missing, both commands stop immediately with an install message instead of running. `python -m reconcile run ... --no-ocr` skips OCR on purpose; scanned pages are then flagged for review.
 
-Tests: `python -m pytest` (117 tests; the OCR tests are skipped if tesseract is not installed).
+Tests: `python -m pytest` (126 tests; the OCR tests are skipped if tesseract is not installed).
 
 ## What it does
 
@@ -131,6 +131,9 @@ Layouts live in `reconcile/pdf_extract.py` as `SupplierLayout` entries in `LAYOU
 - Sign-in is a single shared password, not per-user accounts; uploaded files stay on the server's disk until the container is replaced.
 - The Docker image has not been built in CI; it was written against `python:3.12-slim` while the test suite ran on Python 3.13.
 - IDR documents only; other currencies are not converted.
+- OCR verification proves the numbers, not the text: a misread item code or description can pass the arithmetic checks and then show as a line difference against the ERP.
+- An unreadable page is held for review but is not yet linked to the ERP entry it probably belongs to; that entry shows as missing in the PDF.
+- Foreign-currency ERP entries are not flagged specifically; they show up as an ordinary mismatch or a missing document.
 - Matching is per document number with a PO/date/total fallback; it does not do many-to-one payments or partial deliveries.
 - The ERP export is read as a file; there is no live ERP connection or posting back.
 - Decisions made in the web interface are stored locally in the run folder; there is no login or multi-user control, and the web interface shows only the latest run (earlier runs stay on disk).
